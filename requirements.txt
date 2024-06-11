@@ -1,0 +1,16 @@
+fastapi
+uvicorn
+qdrant-client
+playwright
+beautifulsoup4
+nltk
+python-dotenv
+webdriver-manager
+pandas
+pydantic
+google-generativeai==0.6.0
+google-api-core==2.19.0
+proto-plus==1.23.0
+protobuf==3.19.5
+langchain==0.0.123
+
