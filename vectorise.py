@@ -47,27 +47,32 @@ results = [
     for chunk in texts
 ]
 
-# Create Qdrant collection
-collection_name = "gigalogy_rag"
-client.create_collection(
-    collection_name=collection_name,
-    vectors_config=VectorParams(size=768, distance=Distance.COSINE)
-)
-
-# Prepare points to be inserted into Qdrant
-points = [
-    PointStruct(
-        id=idx,
-        vector=result['embedding'],
-        payload={"text": chunk.page_content},
+# Check if the collection already exists
+try:
+    client.get_collection(collection_name="gigalogy_rag")
+    print("Collection already exists.")
+except Exception as e:
+    print("Creating collection...")
+    client.create_collection(
+        collection_name="gigalogy_rag",
+        vectors_config=VectorParams(size=768, distance=Distance.COSINE)
     )
-    for idx, (result, chunk) in enumerate(zip(results, texts))
-]
 
-# Insert the points into the Qdrant collection
-client.upsert(
-    collection_name=collection_name,
-    points=points
-)
+    # Prepare points to be inserted into Qdrant
+    points = [
+        PointStruct(
+            id=idx,
+            vector=result['embedding'],
+            payload={"text": chunk.page_content},
+        )
+        for idx, (result, chunk) in enumerate(zip(results, texts))
+    ]
 
+    # Insert the points into the Qdrant collection
+    client.upsert(
+        collection_name="gigalogy_rag",
+        points=points
+    )
 
+# Export results for use in other scripts
+embedding_results = results
