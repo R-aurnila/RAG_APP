@@ -1,6 +1,6 @@
 fastapi
 uvicorn
-qdrant-client
+qdrant-client==1.8.2
 playwright
 beautifulsoup4
 nltk
@@ -8,11 +8,12 @@ python-dotenv
 webdriver-manager
 pandas
 pydantic
-google-generativeai<0.6.0
+google-generativeai==0.7.1
 google-api-core==2.19.0
 proto-plus==1.23.0
 protobuf==3.19.5
-langchain==0.0.123
+langchain==0.2.6
 langchain-google-genai
+langchain-qdrant==0.1.1
 
 

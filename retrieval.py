@@ -1,13 +1,12 @@
 import os
-from typing import Dict
+from typing import List
 from qdrant_client import QdrantClient
-from google.generativeai import embed_content
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_qdrant import Qdrant
+from langchain_core.runnables import RunnableLambda
+from langchain.prompts import ChatPromptTemplate
 from langchain.schema import SystemMessage, HumanMessage
-from langchain.chains import RetrievalQA
+from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from dotenv import load_dotenv
-from langchain.vectorstores import Qdrant
 
 # Load environment variables from .env file
 load_dotenv()
@@ -18,10 +17,28 @@ QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
 QDRANT_URL = os.getenv("QDRANT_URL")
 
 # Initialize LLM
-llm = ChatGoogleGenerativeAI(model="gemini-pro", google_api_key=GEMINI_API_KEY, temperature=0.9, max_output_tokens=1024, convert_system_message_to_human=True)
+llm = ChatGoogleGenerativeAI(
+    model="gemini-pro",
+    google_api_key=GEMINI_API_KEY,
+    temperature=0.9,
+    max_output_tokens=1024,
+    convert_system_message_to_human=True
+)
 
+# Define the Google Generative AI Embeddings with the specified model
+gemini_embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=GEMINI_API_KEY)
 
-# Generate Prompt Template
+# Define vector store using the existing collection and the embeddings instance
+vector_store = Qdrant(
+    client=QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY),
+    collection_name="gigalogy_rag",
+    embeddings=gemini_embeddings  # Pass the embeddings instance
+)
+
+# Define the Retriever
+retriever = vector_store.as_retriever()
+
+# Define the Prompt Template
 sys_prompt = """
 You are a helpful assistant to answer and guide for Gigalogy Company. Always answer as helpful and as relevant
 as possible, while being informative. Keep answer length about 100-200 words.
@@ -35,56 +52,34 @@ QA_prompt = ChatPromptTemplate.from_messages([
     HumanMessage(content=instruction)
 ])
 
-
-
-# Initialize Qdrant client
-client = QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY)
-
-# Define embedding function
-def embedding_function(text: str) -> list:
-    embedding = embed_content(
-        model="models/embedding-001",
-        content=text,
-        task_type="retrieval_query",
-    )["embedding"]
-    return embedding
-
-# Define vector store using the existing collection
-vector_store = Qdrant(
-    client=client,
-    collection_name="gigalogy_rag",
-    embedding_function=embedding_function
-)
-
-# Create retriever from the vector store
-retriever = vector_store.as_retriever()
-
-# Create RetrievalQA Chain
-qa_chain = RetrievalQA.from_chain_type(
-    llm=llm,
-    chain_type="stuff",
-    retriever=retriever,
-    return_source_documents=True,  # Get source
-    chain_type_kwargs={"prompt": QA_prompt}
-)
-# Function to perform search and generate response using LLM
-def perform_search(query_text: str) -> Dict:
-    # Generate query embedding
-    query_embedding = embedding_function(query_text)
-
-    # Search the vector store
-    search_results = client.search(
-        collection_name="gigalogy_rag",
-        query_vector=query_embedding,
-        limit=3  # Retrieve top 3 results
+# Define the RunnableSequence
+qa_chain = (
+    # Step to retrieve relevant documents
+    RunnableLambda(
+        func=lambda inputs: retriever.invoke({'query': inputs['question']})
     )
+    # Step to generate the context
+    | RunnableLambda(
+        func=lambda inputs: {
+            'context': ' '.join([doc.page_content for doc in inputs['results']]),
+            'question': inputs['question']
+        }
+    )
+    # Step to format the context and question for the LLM
+    | RunnableLambda(
+        func=lambda inputs: QA_prompt.format_prompt(
+            context=inputs['context'],
+            question=inputs['question']
+        )
+    )
+    # Step to generate the answer using LLM
+    | llm
+)
 
-    # Format search results into context
-    context = " ".join([result.payload["text"] for result in search_results])
-
-    # Use the RetrievalQA chain to get the LLM response
-    llm_res = qa_chain({"context": context, "question": query_text})
-    return llm_res
+# Function to perform search and generate response using LLM
+def perform_search(query_text: str) -> str:
+    result = qa_chain.invoke({'question': query_text})
+    return result['text']
 
 # Example usage
 if __name__ == "__main__":
