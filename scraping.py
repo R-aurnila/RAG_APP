@@ -1,9 +1,10 @@
 import time
+import csv
 from playwright.sync_api import sync_playwright
 from urllib.parse import urljoin, urlparse
 
-def scrape_gigalogy():
-    base_url = 'https://www.gigalogy.com'
+def scrape_website(URL: str):
+    base_url = URL
     visited_urls = set()
     urls_to_visit = [base_url]
     data = []
@@ -17,7 +18,7 @@ def scrape_gigalogy():
         return parsed_url.netloc == parsed_base.netloc
 
     def scrape_page(page, url):
-        print(f"Scraping: {url}")
+        print(f"Scraping: {url} ... This could take a while, please be patient.")
         page.goto(url)
         time.sleep(5)
         
@@ -30,7 +31,11 @@ def scrape_gigalogy():
             if title_element and description_element:
                 title = title_element.inner_text().strip()
                 description = description_element.inner_text().strip()
-                data.append(f"URL: {url}\nTitle: {title}\nDescription: {description}\n")
+                data.append({
+                    "URL": url,
+                    "Title": title,
+                    "Description": description
+                })
         
         # Extract all links
         links = page.query_selector_all('a')
@@ -52,11 +57,19 @@ def scrape_gigalogy():
                 scrape_page(page, current_url)
 
         # Save the data to a TXT file
-        with open('app/data/gigalogy_data.txt', 'w', encoding='utf-8') as file:
-            file.write("\n".join(data))
+        with open('data/website_data.txt', 'w', encoding='utf-8') as file:
+            for item in data:
+                file.write(f"URL: {item['URL']}\nTitle: {item['Title']}\nDescription: {item['Description']}\n\n")
+        # Save the data to a CSV file
+        with open('data/website_data.csv', 'w', newline='', encoding='utf-8') as csvfile:
+            fieldnames = ['URL', 'Title', 'Description']
+            writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+            writer.writeheader()
+            for item in data:
+                writer.writerow(item)
 
-        print("Data has been scraped and saved to app/data/gigalogy_data.txt")
+        print("Data has been scraped and saved to data/website_data.csv")
         browser.close()
 
-if __name__ == "__main__":
-    scrape_gigalogy()
+# path to import the TXT file
+path = 'data/website_data.txt'

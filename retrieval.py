@@ -1,12 +1,17 @@
 import os
+import logging
 from typing import List
 from qdrant_client import QdrantClient
 from langchain_qdrant import Qdrant
-from langchain_core.runnables import RunnableLambda
-from langchain.prompts import ChatPromptTemplate
-from langchain.schema import SystemMessage, HumanMessage
 from langchain_google_genai import GoogleGenerativeAIEmbeddings, ChatGoogleGenerativeAI
 from dotenv import load_dotenv
+from langchain.schema import SystemMessage, HumanMessage
+import re
+import textwrap
+from langchain_core.messages.ai import AIMessage
+
+# Configure logging
+# logging.basicConfig(level=logging.DEBUG)
 
 # Load environment variables from .env file
 load_dotenv()
@@ -32,57 +37,85 @@ gemini_embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001", g
 vector_store = Qdrant(
     client=QdrantClient(url=QDRANT_URL, api_key=QDRANT_API_KEY),
     collection_name="gigalogy_rag",
-    embeddings=gemini_embeddings  # Pass the embeddings instance
+    embeddings=gemini_embeddings
 )
 
 # Define the Retriever
 retriever = vector_store.as_retriever()
 
-# Define the Prompt Template
+# Define the System Prompt
 sys_prompt = """
 You are a helpful assistant to answer and guide for Gigalogy Company. Always answer as helpful and as relevant
 as possible, while being informative. Keep answer length about 100-200 words.
 
 If you don't know the answer to a question, please don't share false information.
 """
-instruction = """CONTEXT:\n\n {context}\n\nQuery: {question}\n"""
-
-QA_prompt = ChatPromptTemplate.from_messages([
-    SystemMessage(content=sys_prompt),
-    HumanMessage(content=instruction)
-])
-
-# Define the RunnableSequence
-qa_chain = (
-    # Step to retrieve relevant documents
-    RunnableLambda(
-        func=lambda inputs: retriever.invoke({'query': inputs['question']})
-    )
-    # Step to generate the context
-    | RunnableLambda(
-        func=lambda inputs: {
-            'context': ' '.join([doc.page_content for doc in inputs['results']]),
-            'question': inputs['question']
-        }
-    )
-    # Step to format the context and question for the LLM
-    | RunnableLambda(
-        func=lambda inputs: QA_prompt.format_prompt(
-            context=inputs['context'],
-            question=inputs['question']
-        )
-    )
-    # Step to generate the answer using LLM
-    | llm
-)
 
 # Function to perform search and generate response using LLM
-def perform_search(query_text: str) -> str:
-    result = qa_chain.invoke({'question': query_text})
-    return result['text']
+def perform_search(query: str):
+    # logging.debug(f"Performing search for query: {query}")
+    if not isinstance(query, str):
+        query = str(query)
+    try:
+        # Retrieve relevant documents from the vector store
+        results = retriever.invoke(query)  # Pass the query directly as a string
+        # logging.debug(f"Results from retriever: {results}")
 
-# Example usage
-if __name__ == "__main__":
-    query = "What are the company policies on remote work?"
-    result = perform_search(query)
-    print(result)
+        # Extract the relevant content from the documents
+        context = ' '.join([doc.page_content for doc in results if doc.page_content])
+        # logging.debug(f"Context extracted from documents: {context}")
+
+        # Construct the prompt using SystemMessage and HumanMessage
+        prompt_messages = [
+            SystemMessage(content=sys_prompt),
+            HumanMessage(content=f"CONTEXT:\n\n{context}\n\nQuery: {query}\n")
+        ]
+
+        # Generate the response using the LLM with the context
+        response = llm(prompt_messages)
+        # logging.debug(f"Generated response: {response}")
+
+    except Exception as e:
+        logging.error(f"Error occurred while performing search: {e}")
+        raise e
+    
+    return response
+
+def display_content(text, width=80):
+    # Use regular expressions to split on either single or double newlines
+    delimiters = r'(\n\n|\n)'
+    tokens = re.split(delimiters, text)
+
+    # Initialize a list to store the wrapped lines
+    wrapped_lines = []
+
+    for token in tokens:
+        # Check if the token is a delimiter
+        if token in ['\n', '\n\n']:
+            # Add the delimiter directly to the list
+            wrapped_lines.append(token)
+        else:
+            # Wrap the text token to the specified width
+            wrapped_text = textwrap.fill(token, width=width)
+            wrapped_lines.append(wrapped_text)
+
+    # Join the wrapped lines, preserving double newlines where appropriate
+    formatted_text = ''.join(wrapped_lines)
+    
+    return formatted_text
+
+# Function to handle AIMessage and display its content
+def handle_result(result):
+    if isinstance(result, AIMessage):
+        content = result.content  # Extract the content from the AIMessage
+        response = display_content(content)
+        return response
+    else:
+        print("The result is not an instance of AIMessage.")
+
+# Example query
+# query_text = "What are the company policies on remote work?"
+# if not isinstance(query_text, str):
+#     query_text = str(query_text)
+# result = perform_search(query_text)
+# handle_result(result)
