@@ -6,6 +6,7 @@ from qdrant_client import QdrantClient
 from retrieval import perform_search, handle_result
 from scraping import scrape_website
 from vectorise import vectorise
+import asyncio
 
 # Initialize FastAPI router
 router = APIRouter()
@@ -25,9 +26,10 @@ class InputData(BaseModel):
 
 
 @router.post("/URL")
-async def ask(URL: InputData):
+async def scrape(url: InputData):
     try:
-        return scrape_website(URL.input_text)
+        await scrape_website(url.input_text)
+        return {"message": "Scraping completed"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
     
