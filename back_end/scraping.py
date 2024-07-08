@@ -56,23 +56,23 @@ async def scrape_website(URL: str):
                 await scrape_page(page, current_url)
 
         os.makedirs('data', exist_ok=True)
-        with open('data/website_data.txt', 'w', encoding='utf-8') as file:
+        with open('back_end/data/website_data.txt', 'w', encoding='utf-8') as file:
             for item in data:
                 file.write(f"URL: {item['URL']}\nTitle: {item['Title']}\nDescription: {item['Description']}\n\n")
         
-        with open('data/website_data.csv', 'w', newline='', encoding='utf-8') as csvfile:
+        with open('back_end/data/website_data.csv', 'w', newline='', encoding='utf-8') as csvfile:
             fieldnames = ['URL', 'Title', 'Description']
             writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
             writer.writeheader()
             for item in data:
                 writer.writerow(item)
 
-        print("Data has been scraped and saved to data/website_data.csv")
+        print("Data has been scraped and saved to back_end/data/website_data.csv")
         await browser.close()
 
 # Run the async function
 # URL = 'http://example.com'  # Replace with the actual URL you want to scrape
 # asyncio.run(scrape_website(URL))
 
-path="data/gigalogy_data.txt"
+path="back_end/data/website_data.txt"
 

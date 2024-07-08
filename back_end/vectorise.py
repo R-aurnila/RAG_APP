@@ -4,7 +4,7 @@ from qdrant_client import QdrantClient
 from qdrant_client.models import Distance, PointStruct, VectorParams
 from dotenv import load_dotenv
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from scraping import path
+from back_end.scraping import path
 
 def vectorise(collection_name: str):  
     # Load environment variables from .env file
@@ -77,5 +77,9 @@ def vectorise(collection_name: str):
     )
 
     print("Collection created and points upserted.")
+
+    return collection_name  
+
+
 
 

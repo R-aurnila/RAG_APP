@@ -1,6 +1,15 @@
-FROM python:3.10-slim
+# Backend stage
+FROM python:3.10-slim AS fastapi
+
+# Set working directory for backend
 WORKDIR /app
-COPY . /app
+
+# Copy frontend build files to the backend working directory
+COPY --from=frontend /app/front_end/dist /app/front_end/dist
+
+# Copy backend files
+COPY main.py requirements.txt ./  
+
 # Install system dependencies for Playwright
 RUN apt-get update && apt-get install -y \
     libglib2.0-0 \
@@ -25,7 +34,14 @@ RUN apt-get update && apt-get install -y \
     libcairo2 \
     libasound2 \
     && rm -rf /var/lib/apt/lists/*
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Install Playwright
 RUN playwright install
-EXPOSE 80
+
+# Expose the application port
+
+# Command to run the FastAPI app
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "80"]
