@@ -27,7 +27,7 @@ services:
       dockerfile: Dockerfile.frontend
       target: frontend
     ports:
-      - "5173:80"
+      - "5173:81"
     volumes:
       - ./front_end:/app/front_end
     command: sh -c "npm install && npm run dev"
