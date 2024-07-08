@@ -15,3 +15,6 @@ COPY . .
 
 # Build the frontend
 RUN npm run build
+
+# Expose the application port
+EXPOSE 80
