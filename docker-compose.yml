@@ -1,33 +1,37 @@
-version: '3.9'
-
 services:
-  fastapi:
+  frontend:
     build:
-      context: .
-      dockerfile: Dockerfile.backend
-      target: fastapi
+      context: ./front_end
+      dockerfile: Dockerfile.frontend
+      target: frontend
+    ports:
+      - "5173:5173"
+    volumes:
+      - ./front_end:/app/front_end
+    networks:
+      - app-network  # Attach to a common network
+
+  backend:
+    build:
+      context: .  # Set the build context to the root directory
+      dockerfile: back_end/Dockerfile.backend
+      target: backend
     ports:
       - "8000:80"
     depends_on:
       - qdrant
-    volumes:
-      - ./back_end:/app/back_end
-      - ./main.py:/app/main.py
-      - ./requirements.txt:/app/requirements.txt
+      - frontend
+    networks:
+      - app-network  # Attach to the same network
 
   qdrant:
     image: qdrant/qdrant:v1.0.0
     ports:
       - "6333:6333"
       - "6334:6334"
+    networks:
+      - app-network  # Attach to the same network
 
-  frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile.frontend
-      target: frontend
-    ports:
-      - "5173:81"
-    volumes:
-      - ./front_end:/app/front_end
-    command: sh -c "npm install && npm run dev"
+networks:
+  app-network:
+    driver: bridge  # Default network driver

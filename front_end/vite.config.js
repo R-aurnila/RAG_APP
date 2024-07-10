@@ -12,5 +12,13 @@ export default defineConfig({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url))
     }
-  }
+  },
+  server: {
+    port: 5173,
+    host: true,  // Ensure Vite runs on port 81 inside the container
+    strictPort: true,  // Ensure Vite fails if the port is already in use
+    hmr: {
+      host: 'localhost',  // Host for Hot Module Replacement
+    },
+  },
 })
