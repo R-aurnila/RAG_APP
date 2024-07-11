@@ -1,40 +1,52 @@
 <script setup>
 import axios from 'axios';
 import logo from '@/assets/logo.jpeg';
-import { ref } from 'vue'
+import { ref } from 'vue';
 
 const scrapeUrl = ref('');
 const vectorizeUrl = ref('');
 const question = ref('');
 const result = ref('');
+const scrapeButtonText = ref('Scrape');
+const vectorizeButtonText = ref('Vectorize');
+const questionButtonText = ref('Enter');
 
 const processScrape = async () => {
   try {
+    scrapeButtonText.value = 'Processing...';
     const response = await axios.post('http://localhost:8000/URL', { input_text: scrapeUrl.value });
     alert(response.data.message);
   } catch (error) {
     console.error(error);
     alert('Scraping failed');
+  } finally {
+    scrapeButtonText.value = 'Scrape';
   }
 }
 
 const processVectorize = async () => {
   try {
+    vectorizeButtonText.value = 'Processing...';
     const response = await axios.post('http://localhost:8000/collection', { input_text: vectorizeUrl.value });
-    alert('Vectorization completed');
+    alert(response.data.message);
   } catch (error) {
     console.error(error);
     alert('Vectorization failed');
+  } finally {
+    vectorizeButtonText.value = 'Vectorize';
   }
 }
 
 const processQuestion = async () => {
   try {
+    questionButtonText.value = 'Processing...';
     const response = await axios.post('http://localhost:8000/ask', { input_text: question.value });
     result.value = response.data;
   } catch (error) {
     console.error(error);
     alert('Question processing failed');
+  } finally {
+    questionButtonText.value = 'Enter';
   }
 }
 </script>
@@ -62,12 +74,13 @@ const processQuestion = async () => {
         <button
           type="submit"
           class="btn btn-primary ms-2"
+          :disabled="scrapeButtonText === 'Processing...'"
           style="width: 100px;"
         >
-          Scrape
+          {{ scrapeButtonText }}
         </button>
 
-        <span class="mt-3">Your scraped file is saved to path/to/some/where (output print)</span>
+        <span class="mt-3"> </span>
       </form>
 
       <form
@@ -82,9 +95,10 @@ const processQuestion = async () => {
         <button
           type="submit"
           class="btn btn-primary ms-2"
+          :disabled="vectorizeButtonText === 'Processing...'"
           style="width: 100px;"
         >
-          Vectorize
+          {{ vectorizeButtonText }}
         </button>
       </form>
 
@@ -101,14 +115,15 @@ const processQuestion = async () => {
         <button
           type="submit"
           class="btn btn-primary ms-2"
+          :disabled="questionButtonText === 'Processing...'"
           style="width: 100px;"
         >
-          Enter
+          {{ questionButtonText }}
         </button>
       </form>
     </div>
     <div class="border rounded mx-auto mt-5" style="width: 700px; height: 150px;">
-      <pre>{{ result }}</pre>
+      <pre>{{ result.response }}</pre>
     </div>
   </div>
 </template>

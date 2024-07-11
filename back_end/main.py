@@ -1,11 +1,12 @@
 import os
 from fastapi import APIRouter, HTTPException, FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from dotenv import load_dotenv
 from qdrant_client import QdrantClient
 from back_end.retrieval import perform_search, handle_result
-from back_end.scraping import scrape_website
+from back_end.scraping import scrape_website, path
 from back_end.vectorise import vectorise
 
 
@@ -32,7 +33,7 @@ class InputData(BaseModel):
 async def scrape(url: InputData):
     try:
         await scrape_website(url.input_text)
-        return {"message": "Scraping completed"}
+        return {"message": "Data has been scraped and saved to E:/RAG_APP/back_end/data/website_data.csv"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))    
     
@@ -59,7 +60,21 @@ async def ask(question: InputData):
 
 # Initialize FastAPI app
 app = FastAPI()
+
+# Add CORS middleware
+origins = [
+    "http://localhost:5173",  # Frontend
+]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 app.include_router(router)
 
 # Serve static files from the frontend build directory
-app.mount("/", StaticFiles(directory="front_end/dist", html=True), name="static")
+app.mount("/", StaticFiles(directory="/app/front_end/dist", html=True), name="static")

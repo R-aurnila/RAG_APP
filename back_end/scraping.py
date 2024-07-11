@@ -19,7 +19,7 @@ async def scrape_website(URL: str):
         return parsed_url.netloc == parsed_base.netloc
 
     async def scrape_page(page, url):
-        print(f"Scraping: {url} ... This could take a while, please be patient.")
+        # print(f"Scraping: {url} ... This could take a while, please be patient.")
         await page.goto(url)
         await asyncio.sleep(5)
         
@@ -67,7 +67,7 @@ async def scrape_website(URL: str):
             for item in data:
                 writer.writerow(item)
 
-        print("Data has been scraped and saved to back_end/data/website_data.csv")
+        # print("Data has been scraped and saved to E:/RAG_APP/back_end/data/website_data.csv")
         await browser.close()
 
 # Run the async function
