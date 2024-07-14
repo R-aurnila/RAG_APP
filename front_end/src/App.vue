@@ -86,7 +86,7 @@ const processQuestion = async () => {
       <form
         class="row mx-auto my-4"
         @submit.prevent="processVectorize"
-      >
+      > <label class="fs-5 fw-bold p-0 pb-1">Enter collection name:</label>
         <input
           type="text"
           v-model="vectorizeUrl"
